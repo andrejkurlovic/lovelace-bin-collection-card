@@ -198,6 +198,25 @@ console.log('## A bin entering the display window still triggers a correct struc
   assert(tilesAfter === tilesBefore + 1, 'new bin appears once it enters the days_ahead window');
 }
 
+console.log('## compact mode fades dots 7+ days out, keeps this-week dots bold');
+{
+  const card = makeCard({ mode: 'compact' });
+  card.hass = makeHass(); // General=0 (today), Garden=7 (future), Plastic=3 (this week), Paper=14 (future)
+  const generalDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.general_bin_days"]');
+  const plasticDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.plastic_bin_days"]');
+  const gardenDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.garden_bin_days"]');
+  const paperDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.paper_bin_days"]');
+  assert(!generalDot.classList.contains('future'), 'today dot is not faded');
+  assert(!plasticDot.classList.contains('future'), 'this-week (3 days) dot is not faded');
+  assert(gardenDot.classList.contains('future'), '7-day-out dot is faded');
+  assert(paperDot.classList.contains('future'), '14-day-out dot is faded');
+
+  // patch path: plastic crosses from this-week into next-week without changing entity order/struct
+  card.hass = makeHass({ 'sensor.plastic_bin_days': { state: '8', attributes: {} } });
+  const plasticDotAfter = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.plastic_bin_days"]');
+  assert(plasticDotAfter.classList.contains('future'), 'patch path also applies the future class when a bin crosses the 7-day boundary');
+}
+
 console.log('## Visual editor mounts, renders bins, supports reordering and colour swatches');
 {
   const editor = document.createElement('bin-collection-card-editor');

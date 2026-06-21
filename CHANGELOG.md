@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.0.1
+
+### Fixed
+- **compact mode**: every dot used the bin's full accent colour regardless of
+  how far away the collection was, so a bin due today looked identical to one
+  due in three weeks. Dots for bins due within the next 7 days ("this week",
+  including today) now stay at full size/opacity; bins 7+ days out (or with no
+  known date) are now smaller and faded (35% opacity) so the row reads as
+  "what's close" at a glance instead of a flat row of equally-loud dots.
+
 ## v4.0.0 — Refinement pass
 
 This is a refinement and maturation release, not a redesign. No breaking config

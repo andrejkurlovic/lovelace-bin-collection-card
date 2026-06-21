@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.0.0
+ * lovelace-bin-collection-card v4.0.1
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -1019,12 +1019,18 @@ class BinCollectionCard extends HTMLElement {
     return 'No collections due';
   }
 
+  // "This week" (today included) stays bold; 7+ days (or unknown) out fades — keeps the
+  // dot row scannable instead of every bin looking equally urgent regardless of timing.
+  _isCompactFuture(b) {
+    return b.days == null || b.days >= 7;
+  }
+
   _renderCompact(bins) {
     const c = this._config;
     const summary = this._compactSummary(bins);
     const html = `<div class="compact" id="header">
       <div class="compact-dots">
-        ${bins.map(b => `<div class="compact-dot ${b.days === 0 ? 'today' : ''}" data-key="${b.entity}"
+        ${bins.map(b => `<div class="compact-dot ${b.days === 0 ? 'today' : ''} ${this._isCompactFuture(b) ? 'future' : ''}" data-key="${b.entity}"
           style="background:${colorFor(b.color).accent}" title="${b.name}: ${daysLabel(b.days, c)}"></div>`).join('')}
       </div>
       <div class="compact-text">
@@ -1050,6 +1056,7 @@ class BinCollectionCard extends HTMLElement {
       const dot = sr.querySelector(`.compact-dot[data-key="${b.entity}"]`);
       if (dot) {
         dot.classList.toggle('today', b.days === 0);
+        dot.classList.toggle('future', this._isCompactFuture(b));
         dot.title = `${b.name}: ${daysLabel(b.days, c)}`;
       }
     });
@@ -1190,7 +1197,8 @@ class BinCollectionCard extends HTMLElement {
 /* ── COMPACT ── */
 .compact { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .compact-dots { display: flex; gap: 4px; flex-shrink: 0; }
-.compact-dot { width: 9px; height: 9px; border-radius: 50%; transition: transform .15s; }
+.compact-dot { width: 9px; height: 9px; border-radius: 50%; opacity: 1; transition: transform .15s, opacity .2s, width .15s, height .15s; }
+.compact-dot.future { opacity: 0.35; width: 7px; height: 7px; }
 .compact-dot.today { transform: scale(1.4); box-shadow: 0 0 5px currentColor; }
 .compact-text { flex: 1; min-width: 0; }
 .compact-title { font-size: 13px; font-weight: 700; }
