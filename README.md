@@ -103,7 +103,7 @@ bins:
 | `sort` | boolean | `true` | sort bins by soonest |
 | `show_all_bins` | boolean | `false` | bypass `days_ahead` filtering entirely |
 | `show_future_bins` | boolean | `true` | show the "Next: …" line and optional faded upcoming bins; hide groups beyond tomorrow in timeline |
-| `fade_future_bins` | boolean | `false` | fade bins further than half of `days_ahead` away — works in smart-summary, image-grid, timeline |
+| `fade_future_bins` | boolean | `false` | fade bins further than half of `days_ahead` away — works in all four modes, including compact's dots |
 | `highlight_today` | enum | `subtle` | `off` \| `subtle` (dot) \| `strong` (coloured TODAY/TOMORROW pill) |
 | `secondary_info` | enum | `days` | `days` ("in 7 days") \| `date` ("Tue 30 Jun") \| `both` ("7 days • Tue 30 Jun") |
 | `display_density` | enum | `balanced` | `calm` (0) \| `balanced` (1) \| `rich` (2) — how many extra faded bins show in the Next Collection state |

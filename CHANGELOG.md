@@ -1,5 +1,15 @@
 # Changelog
 
+## v4.0.2
+
+### Fixed
+- v4.0.1's compact-mode dot fade was unconditional (always applied past a
+  fixed 7-day cutoff), inconsistent with the other three modes where fading
+  is opt-in per card via `fade_future_bins`. It's now gated the same way
+  everywhere: `fade_future_bins:false` (the default) means no compact dot
+  ever fades, and when enabled it uses the same `days_ahead/2` threshold as
+  smart-summary/image-grid/timeline — configured per card, not globally.
+
 ## v4.0.1
 
 ### Fixed

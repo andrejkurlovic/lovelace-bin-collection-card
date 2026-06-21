@@ -119,13 +119,21 @@ console.log('## highlight_today: subtle vs strong are now visually distinct (ide
   assert(!subtleCard.shadowRoot.querySelector('.hl-pill'), 'subtle does not also render a pill element');
 }
 
-console.log('## fade_future_bins now works across modes, not just image-grid');
+console.log('## fade_future_bins now works across all four modes, gated per-card (not just image-grid, not unconditional)');
 {
-  for (const mode of ['image-grid', 'timeline']) {
+  for (const mode of ['image-grid', 'timeline', 'smart-summary']) {
     const card = makeCard({ mode, fade_future_bins: true, days_ahead: 10 });
     card.hass = makeHass();
-    assert(card.shadowRoot.innerHTML.includes('faded'), `${mode}: faded class present on far-future bin`);
+    assert(card.shadowRoot.innerHTML.includes('faded'), `${mode}: faded class present on far-future bin when fade_future_bins:true`);
   }
+
+  const compactOn = makeCard({ mode: 'compact', fade_future_bins: true, days_ahead: 10 });
+  compactOn.hass = makeHass();
+  assert(!!compactOn.shadowRoot.querySelector('.compact-dot.future'), 'compact: far-future dot fades when fade_future_bins:true');
+
+  const compactOff = makeCard({ mode: 'compact', fade_future_bins: false, days_ahead: 10 });
+  compactOff.hass = makeHass();
+  assert(!compactOff.shadowRoot.querySelector('.compact-dot.future'), 'compact: no dot fades when fade_future_bins:false, even 14 days out');
 }
 
 console.log('## show_future_bins:false hides the "Next:" line in smart-summary');
@@ -198,23 +206,29 @@ console.log('## A bin entering the display window still triggers a correct struc
   assert(tilesAfter === tilesBefore + 1, 'new bin appears once it enters the days_ahead window');
 }
 
-console.log('## compact mode fades dots 7+ days out, keeps this-week dots bold');
+console.log('## compact mode dot fading is gated by fade_future_bins + days_ahead, same as every other mode (not a hardcoded 7-day rule)');
 {
-  const card = makeCard({ mode: 'compact' });
-  card.hass = makeHass(); // General=0 (today), Garden=7 (future), Plastic=3 (this week), Paper=14 (future)
+  // days_ahead:10 -> threshold (days_ahead/2) = 5; show_all_bins so Paper (14d) isn't filtered out of display entirely
+  const card = makeCard({ mode: 'compact', fade_future_bins: true, days_ahead: 10, show_all_bins: true });
+  card.hass = makeHass(); // General=0 (today), Plastic=3 (within threshold), Garden=7, Paper=14 (beyond threshold)
   const generalDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.general_bin_days"]');
   const plasticDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.plastic_bin_days"]');
   const gardenDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.garden_bin_days"]');
   const paperDot = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.paper_bin_days"]');
   assert(!generalDot.classList.contains('future'), 'today dot is not faded');
-  assert(!plasticDot.classList.contains('future'), 'this-week (3 days) dot is not faded');
-  assert(gardenDot.classList.contains('future'), '7-day-out dot is faded');
-  assert(paperDot.classList.contains('future'), '14-day-out dot is faded');
+  assert(!plasticDot.classList.contains('future'), 'dot within the fade threshold is not faded');
+  assert(gardenDot.classList.contains('future'), 'dot beyond the fade threshold is faded');
+  assert(paperDot.classList.contains('future'), 'far-future dot is faded');
 
-  // patch path: plastic crosses from this-week into next-week without changing entity order/struct
-  card.hass = makeHass({ 'sensor.plastic_bin_days': { state: '8', attributes: {} } });
+  // patch path: plastic crosses the threshold without changing entity order/struct
+  card.hass = makeHass({ 'sensor.plastic_bin_days': { state: '9', attributes: {} } });
   const plasticDotAfter = card.shadowRoot.querySelector('.compact-dot[data-key="sensor.plastic_bin_days"]');
-  assert(plasticDotAfter.classList.contains('future'), 'patch path also applies the future class when a bin crosses the 7-day boundary');
+  assert(plasticDotAfter.classList.contains('future'), 'patch path also applies the future class once a bin crosses the threshold');
+
+  // and turning fade_future_bins off on the same data leaves every dot bold
+  const noFade = makeCard({ mode: 'compact', fade_future_bins: false, days_ahead: 10, show_all_bins: true });
+  noFade.hass = makeHass();
+  assert(noFade.shadowRoot.querySelectorAll('.compact-dot.future').length === 0, 'fade_future_bins:false means no compact dot fades regardless of days_ahead');
 }
 
 console.log('## Visual editor mounts, renders bins, supports reordering and colour swatches');

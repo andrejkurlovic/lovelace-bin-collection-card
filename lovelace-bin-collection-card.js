@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.0.1
+ * lovelace-bin-collection-card v4.0.2
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -296,6 +296,7 @@ class BinCollectionCardEditor extends HTMLElement {
   <div class="hint">turns off the "Next: …" line and faded upcoming bins in smart-summary, timeline beyond tomorrow</div>
   <div class="row"><label>Fade future bins</label>
     <input type="checkbox" data-key="fade_future_bins" ${c.fade_future_bins ? 'checked' : ''}></div>
+  <div class="hint">fades bins beyond half of "days ahead" — applies in every mode, including compact's dots</div>
 
   <div class="sect">Visual</div>
   <div class="row"><label>Highlight today</label>
@@ -1019,18 +1020,12 @@ class BinCollectionCard extends HTMLElement {
     return 'No collections due';
   }
 
-  // "This week" (today included) stays bold; 7+ days (or unknown) out fades — keeps the
-  // dot row scannable instead of every bin looking equally urgent regardless of timing.
-  _isCompactFuture(b) {
-    return b.days == null || b.days >= 7;
-  }
-
   _renderCompact(bins) {
     const c = this._config;
     const summary = this._compactSummary(bins);
     const html = `<div class="compact" id="header">
       <div class="compact-dots">
-        ${bins.map(b => `<div class="compact-dot ${b.days === 0 ? 'today' : ''} ${this._isCompactFuture(b) ? 'future' : ''}" data-key="${b.entity}"
+        ${bins.map(b => `<div class="compact-dot ${b.days === 0 ? 'today' : ''} ${this._isFaded(b) ? 'future' : ''}" data-key="${b.entity}"
           style="background:${colorFor(b.color).accent}" title="${b.name}: ${daysLabel(b.days, c)}"></div>`).join('')}
       </div>
       <div class="compact-text">
@@ -1056,7 +1051,7 @@ class BinCollectionCard extends HTMLElement {
       const dot = sr.querySelector(`.compact-dot[data-key="${b.entity}"]`);
       if (dot) {
         dot.classList.toggle('today', b.days === 0);
-        dot.classList.toggle('future', this._isCompactFuture(b));
+        dot.classList.toggle('future', this._isFaded(b));
         dot.title = `${b.name}: ${daysLabel(b.days, c)}`;
       }
     });
