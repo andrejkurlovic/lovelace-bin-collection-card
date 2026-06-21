@@ -1,6 +1,6 @@
 {
   "name": "lovelace-bin-collection-card",
-  "version": "2.0.0",
+  "version": "4.0.0",
   "description": "Home Assistant Lovelace card for UK bin/waste collection schedules",
   "author": "Andrej Kurlovic",
   "license": "MIT",
@@ -8,5 +8,18 @@
     "type": "git",
     "url": "https://github.com/andrejkurlovic/lovelace-bin-collection-card"
   },
-  "keywords": ["home-assistant", "lovelace", "custom-card", "bin-collection", "uk", "hacs"]
+  "scripts": {
+    "test": "node test/smoke.js"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "bin-collection",
+    "uk",
+    "hacs"
+  ],
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
 }
