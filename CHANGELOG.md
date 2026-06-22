@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.1.0
+
+### Changed
+- **`fade_future_bins` threshold is now a fixed 7 days, not `days_ahead / 2`.**
+  With a large `days_ahead` (commonly set just to make `show_all_bins`
+  behave predictably, e.g. `days_ahead: 30`), the old relative threshold
+  silently pushed the fade point out too — a bin due in 8 days ("next
+  week") wouldn't fade at all, while one a couple of weeks further out
+  would. Fading now always means "further out than next week," regardless
+  of `days_ahead`.
+
 ## v5.0.2
 
 ### Fixed

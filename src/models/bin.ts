@@ -10,8 +10,14 @@ export function urgencyClass(bin: ResolvedBin): UrgencyClass {
   return '';
 }
 
-export function fadeThreshold(config: CardConfig): number {
-  return config.days_ahead / 2;
+// Fixed at 7 days ("further out than next week") regardless of days_ahead.
+// Used to be days_ahead/2, which meant a large days_ahead (often set purely
+// to make show_all_bins behave predictably) silently pushed the fade point
+// out too, so "next week" bins never faded even with fade_future_bins:true.
+const FADE_THRESHOLD_DAYS = 7;
+
+export function fadeThreshold(_config: CardConfig): number {
+  return FADE_THRESHOLD_DAYS;
 }
 
 export function isFaded(bin: ResolvedBin, config: CardConfig): boolean {
