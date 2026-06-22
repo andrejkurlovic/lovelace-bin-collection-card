@@ -1,5 +1,19 @@
 # Changelog
 
+## v5.1.1
+
+### Fixed
+- **Tighter, less wasteful tile spacing.** The badge row under each bin's
+  name/image (image-grid, row, smart-summary, timeline) used to always
+  reserve its full height even when the bin had no Delayed/Changed badge to
+  show — which is effectively every bin, since the UK Bin Collection
+  integration doesn't currently expose those attributes. That empty
+  reserved space is now skipped entirely; the badge row only renders (and
+  only takes up space) when a bin actually has one. Also trimmed the
+  flex gaps and line-heights slightly in image-grid/row/smart-summary
+  tiles — font sizes are unchanged, only the empty space between lines
+  and elements is reduced.
+
 ## v5.1.0
 
 ### Changed

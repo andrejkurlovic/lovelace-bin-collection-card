@@ -270,6 +270,23 @@ console.log('## Optional delayed/changed badges only appear when exposed');
   assert(!!card.shadowRoot.querySelector('.badge-delayed'), 'Delayed badge appears when sensor exposes delayed:true');
 }
 
+console.log('## Badge wrapper elements take up no reserved space when no bin has a badge');
+for (const mode of ['image-grid', 'row']) {
+  const card = await makeCard({ mode, show_all_bins: true });
+  await setHass(card, makeHass());
+  assert(!card.shadowRoot.querySelector('.tile-badges'), `${mode}: no .tile-badges element rendered without any badges`);
+}
+{
+  const card = await makeCard({ mode: 'smart-summary' });
+  await setHass(card, makeHass());
+  assert(!card.shadowRoot.querySelector('.ss-bin-badges'), 'smart-summary: no .ss-bin-badges element rendered without any badges');
+}
+{
+  const card = await makeCard({ mode: 'image-grid', show_all_bins: true });
+  await setHass(card, makeHass({ 'sensor.general_bin_days': { state: '0', attributes: { delayed: true } } }));
+  assert(!!card.shadowRoot.querySelector('.tile-badges'), 'image-grid: .tile-badges element still renders when a bin has a badge');
+}
+
 console.log('## A bin missing entity is shown honestly, never invented');
 {
   const card = await makeCard({ mode: 'image-grid', show_all_bins: true }, [

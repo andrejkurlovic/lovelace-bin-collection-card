@@ -45,12 +45,12 @@ export const cardStyles = css`
   .ss-subtitle { font-size: 12px; color: var(--secondary-text-color, rgba(255,255,255,0.55)); margin-top: 3px; line-height: 1.35; min-height: 15px; }
   .ss-main { padding: 8px 16px 14px; }
   .ss-bin-row { display: flex; gap: 10px; align-items: flex-end; }
-  .ss-bin { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .ss-bin { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .ss-bin-inner {
     position: relative; border-radius: 14px; padding: 12px 14px 10px; display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-  .ss-bin-name { font-size: 12px; font-weight: 600; color: var(--primary-text-color, #fff); text-align: center; }
+  .ss-bin-name { font-size: 12px; font-weight: 600; color: var(--primary-text-color, #fff); text-align: center; line-height: 1.15; }
   .ss-bin-badges { display: flex; gap: 3px; justify-content: center; min-height: 13px; }
   .ss-action-hint { margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: .02em; font-style: italic; }
   .ss-empty { padding: 20px 18px 24px; display: flex; align-items: center; gap: 12px; }
@@ -79,19 +79,19 @@ export const cardStyles = css`
   /* ── IMAGE GRID / ROW (shared tile) ── */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 0 10px 12px; }
   .row { display: grid; gap: 6px; padding: 0 10px 12px; }
-  .row .bin-tile { padding: 8px 4px 8px; }
+  .row .bin-tile { padding: 8px 4px 7px; gap: 3px; }
   .row .tile-name { font-size: 11px; }
   .row .tile-label { font-size: 10px; }
   .bin-tile {
-    border-radius: 13px; padding: 12px 8px 10px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+    border-radius: 13px; padding: 12px 8px 9px; display: flex; flex-direction: column; align-items: center; gap: 4px;
     cursor: pointer; position: relative; overflow: hidden;
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 1px 5px rgba(0,0,0,0.25);
     -webkit-tap-highlight-color: transparent;
   }
   .tile-img-wrap { position: relative; }
-  .tile-name { font-size: 12px; font-weight: 700; color: #fff; text-align: center; line-height: 1.2; }
-  .tile-label { font-size: 11px; color: rgba(255,255,255,0.65); text-align: center; }
+  .tile-name { font-size: 12px; font-weight: 700; color: #fff; text-align: center; line-height: 1.15; }
+  .tile-label { font-size: 11px; color: rgba(255,255,255,0.65); text-align: center; line-height: 1.15; }
   .tile-label.today { color: #ff8a65; font-weight: 600; }
   .tile-label.tomorrow { color: #ffa726; font-weight: 600; }
   .tile-label.soon { color: #fff176; }

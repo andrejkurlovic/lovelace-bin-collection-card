@@ -1,6 +1,6 @@
 import { html, type TemplateResult } from 'lit';
 import type { CardConfig, ResolvedBin } from '../types';
-import { isFaded } from '../models/bin';
+import { hasBadges, isFaded } from '../models/bin';
 import { dateText } from '../services/formatting';
 import { computeSmartSummaryState } from '../services/smart-summary-state';
 import { colorFor } from '../utils/entities';
@@ -25,7 +25,7 @@ function binCard(bin: ResolvedBin, config: CardConfig, ctx: RenderContext): Temp
         ${highlightBadge(bin, config)}
       </div>
       <div class="ss-bin-name">${bin.name}</div>
-      <div class="ss-bin-badges">${badges(bin)}</div>
+      ${hasBadges(bin) ? html`<div class="ss-bin-badges">${badges(bin)}</div>` : ''}
     </div>`;
 }
 

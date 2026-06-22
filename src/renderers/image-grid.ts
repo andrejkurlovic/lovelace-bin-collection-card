@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import type { CardConfig, ResolvedBin } from '../types';
-import { isFaded, urgencyClass } from '../models/bin';
+import { hasBadges, isFaded, urgencyClass } from '../models/bin';
 import { dateText } from '../services/formatting';
 import { colorFor } from '../utils/entities';
 import { renderHeader } from './header';
@@ -21,7 +21,7 @@ function tile(bin: ResolvedBin, config: CardConfig, ctx: RenderContext): Templat
       <div class="tile-name">${bin.name}</div>
       <div class="tile-label ${urg}">${label}</div>
       ${bin.missing ? html`<div class="tile-warn">no entity</div>` : ''}
-      <div class="tile-badges">${badges(bin)}</div>
+      ${hasBadges(bin) ? html`<div class="tile-badges">${badges(bin)}</div>` : ''}
       <div class="tile-accent" style="background:${cl.accent}"></div>
     </div>`;
 }

@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import type { CardConfig, ResolvedBin } from '../types';
-import { fadeThreshold } from '../models/bin';
+import { fadeThreshold, hasBadges } from '../models/bin';
 import { groupByDate } from '../services/sorting';
 import { formatDay } from '../utils/dates';
 import { colorFor } from '../utils/entities';
@@ -14,7 +14,7 @@ function chip(bin: ResolvedBin, ctx: RenderContext): TemplateResult {
     <div class="tl-chip" style="background:${cl.bg}" @click=${() => ctx.onBinTap(bin)}>
       ${binImage(bin, 20, 28, 'tl-img')}
       <span class="tl-chip-name">${bin.name}</span>
-      <span class="tl-badges">${badges(bin)}</span>
+      ${hasBadges(bin) ? html`<span class="tl-badges">${badges(bin)}</span>` : ''}
     </div>`;
 }
 
