@@ -1,5 +1,29 @@
 # Changelog
 
+## v4.2.1
+
+### Internal cleanup (no behaviour change for normal use)
+- Config defaults (`show_header`, `popup`, `sort`, `show_future_bins`,
+  `days_ahead`, `highlight_today`, `secondary_info`, `today_text`,
+  `tomorrow_text`, etc.) are now applied once in `setConfig()` instead of
+  being re-derived with `c.x !== false` / `c.x || default` in 20+ separate
+  places across render/patch methods.
+- The two popups (planner popup and bin detail popup) shared ~80% identical
+  scaffolding — backdrop, sheet, drag handle, close button, Escape-key
+  handling. Extracted into one `_popupShell()` builder so both can't drift
+  out of sync with each other.
+- The "next collection" bin card markup, previously written twice with
+  slightly different optional fields, is now one `_popupBinCardHtml()` used
+  by both popups. Side effect: the bin detail popup now also shows
+  `collection_type`/`delay_note` if your integration exposes them, matching
+  the planner popup (previously only `message`/`notes`/`action_text` showed
+  there).
+- The today/tomorrow/soon urgency classification for image-grid/row tiles
+  was duplicated verbatim between the render and patch code paths; both now
+  call one `_urgencyClass()` helper.
+- No config keys, modes, or visible behaviour changed. Same 69-assertion
+  test suite passes unmodified.
+
 ## v4.2.0
 
 ### Added

@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.2.0
+ * lovelace-bin-collection-card v4.2.1
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -528,6 +528,26 @@ class BinCollectionCardEditor extends HTMLElement {
 }
 customElements.define('bin-collection-card-editor', BinCollectionCardEditor);
 
+// Applied once in setConfig() so every render/patch method can read a config
+// key directly instead of repeating its own `c.x !== false` / `c.x || default`.
+const CONFIG_DEFAULTS = {
+  title: 'Bin Collection',
+  mode: 'smart-summary',
+  days_ahead: 14,
+  show_header: true,
+  show_next_summary: true,
+  popup: true,
+  sort: true,
+  show_all_bins: false,
+  show_future_bins: true,
+  fade_future_bins: false,
+  highlight_today: 'subtle',
+  secondary_info: 'days',
+  display_density: 'balanced',
+  today_text: 'Today',
+  tomorrow_text: 'Tomorrow',
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Card
 // ─────────────────────────────────────────────────────────────────────────────
@@ -575,7 +595,7 @@ class BinCollectionCard extends HTMLElement {
 
   setConfig(c) {
     if (!c.bins || !c.bins.length) throw new Error('At least one bin required');
-    this._config = c;
+    this._config = Object.assign({}, CONFIG_DEFAULTS, c);
     this._stateHash = null;  // force re-render on next hass set
     this._lastMode = null;   // force a full structural rebuild (config may have changed shape)
     this._render();
@@ -611,7 +631,7 @@ class BinCollectionCard extends HTMLElement {
       };
     });
 
-    if (c.sort !== false) {
+    if (c.sort) {
       bins = bins.sort((a, b) => {
         if (a.days == null) return 1;
         if (b.days == null) return -1;
@@ -625,15 +645,12 @@ class BinCollectionCard extends HTMLElement {
   // full resolved list so its Quiet/Unknown fallback can see beyond days_ahead).
   _filterForDisplay(resolved) {
     const c = this._config;
-    const daysAhead = c.days_ahead != null ? c.days_ahead : 14;
     if (c.show_all_bins) return resolved;
-    return resolved.filter(b => b.days == null || b.days <= daysAhead);
+    return resolved.filter(b => b.days == null || b.days <= c.days_ahead);
   }
 
   _fadeThreshold() {
-    const c = this._config;
-    const daysAhead = c.days_ahead != null ? c.days_ahead : 14;
-    return daysAhead / 2;
+    return this._config.days_ahead / 2;
   }
 
   _isFaded(b) {
@@ -644,7 +661,7 @@ class BinCollectionCard extends HTMLElement {
     if (!this._config) return;
     const resolved = this._resolveBins();
     this._resolved = resolved;
-    const mode = this._config.mode || 'smart-summary';
+    const mode = this._config.mode;
 
     if (this._lastMode === mode && this.shadowRoot.querySelector('.card') && this._patch(mode, resolved)) {
       return;
@@ -731,12 +748,12 @@ class BinCollectionCard extends HTMLElement {
     }
 
     let nextLine = null;
-    if ((state === 'today' || state === 'missed' || state === 'tomorrow') && nextOverall && c.show_future_bins !== false) {
+    if ((state === 'today' || state === 'missed' || state === 'tomorrow') && nextOverall && c.show_future_bins) {
       nextLine = `Next: ${listNames(nextGroup)} ${daysLabel(nextOverall.days, c)}`;
     }
 
     let extraBins = [];
-    if (state === 'upcoming' && c.show_future_bins !== false) {
+    if (state === 'upcoming' && c.show_future_bins) {
       extraBins = furtherBins.slice(0, densityFutureCap(c.display_density));
     }
 
@@ -773,13 +790,13 @@ class BinCollectionCard extends HTMLElement {
         ${s.extraBins.map(b => this._ssChipHtml(b)).join('')}
       </div>` : '';
 
-    const headerBlock = c.show_header !== false ? `
+    const headerBlock = c.show_header ? `
       <div class="ss-header" id="header">
         <div class="ss-header-text">
           <div class="ss-title" data-role="title">${s.headerTitle}</div>
           <div class="ss-subtitle" data-role="subtitle">${s.mainBins.length ? s.headerSub : ''}</div>
         </div>
-        ${c.popup !== false ? `<div class="tap-hint">▸</div>` : ''}
+        ${c.popup ? `<div class="tap-hint">▸</div>` : ''}
       </div>` : '';
 
     return { html: `${headerBlock}${mainHtml}${nextLineHtml}${extraHtml}`, struct: this._ssSignature(s) };
@@ -800,7 +817,7 @@ class BinCollectionCard extends HTMLElement {
   _ssChipHtml(b) {
     const c = this._config;
     const faded = this._isFaded(b);
-    const label = dateText(b, c.secondary_info || 'days', c);
+    const label = dateText(b, c.secondary_info, c);
     return `<div class="ss-chip ${faded ? 'faded' : ''}" data-entity="${b.entity}" data-key="${b.entity}">
       ${imgHtml(b, 18, 24, 'chip-img')}
       <span class="chip-name">${b.name}</span>
@@ -811,10 +828,10 @@ class BinCollectionCard extends HTMLElement {
   // highlight_today: off | subtle (small dot) | strong (coloured pill with text)
   _highlightBadgeHtml(b) {
     const c = this._config;
-    const hl = c.highlight_today || 'subtle';
+    const hl = c.highlight_today;
     if (hl === 'off') return '';
     if (b.days !== 0 && b.days !== 1) return '';
-    const label = b.days === 0 ? (c.today_text || 'Today') : (c.tomorrow_text || 'Tomorrow');
+    const label = b.days === 0 ? c.today_text : c.tomorrow_text;
     const variant = b.days === 0 ? 'today' : 'tomorrow';
     if (hl === 'strong') return `<div class="hl-pill hl-pill-${variant}">${label}</div>`;
     return `<div class="hl-dot hl-dot-${variant}"></div>`;
@@ -846,7 +863,7 @@ class BinCollectionCard extends HTMLElement {
       if (!chip) return;
       chip.classList.toggle('faded', this._isFaded(b));
       const lbl = chip.querySelector('[data-role="label"]');
-      if (lbl) lbl.textContent = dateText(b, this._config.secondary_info || 'days', this._config);
+      if (lbl) lbl.textContent = dateText(b, this._config.secondary_info, this._config);
     });
 
     return true;
@@ -855,32 +872,32 @@ class BinCollectionCard extends HTMLElement {
   // ── shared header for image-grid / timeline ──────────────────────────────
   _headerHtml(bins) {
     const c = this._config;
-    if (c.show_header === false) return '';
+    if (!c.show_header) return '';
     const next = bins.find(b => b.days != null);
     let nextLine = '';
-    if (c.show_next_summary !== false && next) {
+    if (c.show_next_summary && next) {
       const nextGroup = bins.filter(b => b.days === next.days);
-      const label = dateText(next, c.secondary_info || 'days', c);
+      const label = dateText(next, c.secondary_info, c);
       const cls = next.days === 0 ? 'hl-today' : next.days === 1 ? 'hl-tomorrow' : '';
       nextLine = `<div class="header-sub" data-role="next-summary">Next: ${listNames(nextGroup)} — <span class="${cls}">${label}</span></div>`;
     }
     return `<div class="header" id="header">
       <div class="header-left">
-        <div class="header-title">${c.title || 'Bin Collection'}</div>
+        <div class="header-title">${c.title}</div>
         ${nextLine}
       </div>
-      ${c.popup !== false ? '<div class="tap-hint">▸</div>' : ''}
+      ${c.popup ? '<div class="tap-hint">▸</div>' : ''}
     </div>`;
   }
 
   _patchHeader(bins) {
     const c = this._config;
-    if (c.show_header === false) return;
+    if (!c.show_header) return;
     const next = bins.find(b => b.days != null);
     const el = this.shadowRoot.querySelector('[data-role="next-summary"]');
     if (!el || !next) return;
     const nextGroup = bins.filter(b => b.days === next.days);
-    const label = dateText(next, c.secondary_info || 'days', c);
+    const label = dateText(next, c.secondary_info, c);
     const cls = next.days === 0 ? 'hl-today' : next.days === 1 ? 'hl-tomorrow' : '';
     el.innerHTML = `Next: ${listNames(nextGroup)} — <span class="${cls}">${label}</span>`;
   }
@@ -903,7 +920,7 @@ class BinCollectionCard extends HTMLElement {
     const c = this._config;
     const header = this._headerHtml(bins);
     if (!bins.length) {
-      return { html: `${header}<div class="empty-state">No collections due within ${c.days_ahead || 14} days</div>`, struct: 'empty' };
+      return { html: `${header}<div class="empty-state">No collections due within ${c.days_ahead} days</div>`, struct: 'empty' };
     }
     const cards = bins.map(b => this._gridTileHtml(b)).join('');
     const struct = bins.map(b => this._binStructKey(b)).join(',');
@@ -919,22 +936,21 @@ class BinCollectionCard extends HTMLElement {
 
     this._patchHeader(bins);
     const c = this._config;
-    const hl = c.highlight_today || 'subtle';
     bins.forEach(b => {
       const tile = sr.querySelector(`.bin-tile[data-key="${b.entity}"]`);
       if (!tile) return;
-      const urg = b.days === 0 ? 'today' : b.days === 1 ? 'tomorrow' : (b.days != null && b.days > 1 && b.days <= 3) ? 'soon' : '';
+      const urg = this._urgencyClass(b);
       tile.classList.toggle('faded', this._isFaded(b));
 
       const lbl = tile.querySelector('[data-role="label"]');
       if (lbl) {
-        lbl.textContent = b.missing ? '—' : dateText(b, c.secondary_info || 'days', c);
+        lbl.textContent = b.missing ? '—' : dateText(b, c.secondary_info, c);
         lbl.className = `tile-label ${urg}`;
       }
       const dot = tile.querySelector('[data-role="urg-dot"]');
       if (dot) {
         dot.className = `urg-dot ${urg === 'today' ? 'today-dot' : urg === 'tomorrow' ? 'tomorrow-dot' : ''}`;
-        dot.style.display = (urg === 'today' || urg === 'tomorrow') && hl !== 'off' ? '' : 'none';
+        dot.style.display = (urg === 'today' || urg === 'tomorrow') && c.highlight_today !== 'off' ? '' : 'none';
       }
       const badgesEl = tile.querySelector('[data-role="badges"]');
       if (badgesEl) badgesEl.innerHTML = badgesHtml(b);
@@ -960,14 +976,22 @@ class BinCollectionCard extends HTMLElement {
     return this._patchTileLayout(bins);
   }
 
+  // today / tomorrow / soon (2-3 days) / '' — shared by render and patch so the
+  // two paths can never compute a tile's urgency differently.
+  _urgencyClass(b) {
+    if (b.days === 0) return 'today';
+    if (b.days === 1) return 'tomorrow';
+    if (b.days != null && b.days > 1 && b.days <= 3) return 'soon';
+    return '';
+  }
+
   _gridTileHtml(b) {
     const c = this._config;
-    const hl = c.highlight_today || 'subtle';
     const cl = colorFor(b.color);
-    const urg = b.days === 0 ? 'today' : b.days === 1 ? 'tomorrow' : (b.days != null && b.days > 1 && b.days <= 3) ? 'soon' : '';
+    const urg = this._urgencyClass(b);
     const faded = this._isFaded(b);
-    const label = b.missing ? '—' : dateText(b, c.secondary_info || 'days', c);
-    const dotOn = (urg === 'today' || urg === 'tomorrow') && hl !== 'off';
+    const label = b.missing ? '—' : dateText(b, c.secondary_info, c);
+    const dotOn = (urg === 'today' || urg === 'tomorrow') && c.highlight_today !== 'off';
 
     return `<div class="bin-tile ${faded ? 'faded' : ''}" style="background:${cl.bg}" data-entity="${b.entity}" data-key="${b.entity}">
       <div class="urg-dot ${urg === 'today' ? 'today-dot' : urg === 'tomorrow' ? 'tomorrow-dot' : ''}" data-role="urg-dot" style="${dotOn ? '' : 'display:none;'}"></div>
@@ -985,7 +1009,7 @@ class BinCollectionCard extends HTMLElement {
   // ══════════════════════════════════════════════════════════════════════════
   _timelineGroups(bins) {
     let groups = groupByDate(bins);
-    if (this._config.show_future_bins === false) {
+    if (!this._config.show_future_bins) {
       groups = groups.filter(([days]) => Number(days) <= 1);
     }
     return groups;
@@ -1070,7 +1094,7 @@ class BinCollectionCard extends HTMLElement {
           style="background:${colorFor(b.color).accent}" title="${b.name}: ${daysLabel(b.days, c)}"></div>`).join('')}
       </div>
       <div class="compact-text">
-        <div class="compact-title">${c.title || 'Bin Collection'}</div>
+        <div class="compact-title">${c.title}</div>
         <div class="compact-summary" data-role="summary">${summary}</div>
       </div>
       ${bins.slice(0, 3).map(b => `<div class="compact-img-wrap ${this._isFaded(b) ? 'faded' : ''}" data-img-key="${b.entity}" data-entity="${b.entity}">${imgHtml(b, 22, 30, 'compact-img')}</div>`).join('')}
@@ -1305,7 +1329,7 @@ ${this._popupCss()}
     const sr = this.shadowRoot;
 
     const header = sr.getElementById('header');
-    if (header && c.popup !== false) {
+    if (header && c.popup) {
       header.addEventListener('click', () => this._openPopup(this._resolved));
     }
 
@@ -1352,13 +1376,32 @@ ${this._popupCss()}
     }
   }
 
-  // ── Bin detail — next confirmed date + real past history, tap target on any bin ──
-  _openBinDetail(bin) {
-    this._closePopup();
-    const c = this._config;
-    const cl = colorFor(bin.color);
-    const nextLabel = bin.days != null ? dateText(bin, 'both', c) : 'Unknown';
+  // Shared "bin card" block used in both popups — next-collection detail and
+  // the planner's Today section. Optional fields (message/delayNote/
+  // collectionType/notes/action_text) only render if present, same rule as
+  // everywhere else in this card: never invented.
+  _popupBinCardHtml(b, dueLabel) {
+    const cl = colorFor(b.color);
+    return `<div class="popup-bin-card" style="background:${cl.bg}">
+      ${imgHtml(b, 32, 44, 'popup-img')}
+      <div class="popup-bin-info">
+        <div class="popup-bin-name">${b.name} ${badgesHtml(b)}</div>
+        <div class="popup-bin-date">${dueLabel}</div>
+        ${b.message ? `<div class="popup-bin-message">${b.message}</div>` : ''}
+        ${b.delayNote ? `<div class="popup-bin-message">⚠ ${b.delayNote}</div>` : ''}
+        ${b.collectionType ? `<div class="popup-bin-message">${b.collectionType}</div>` : ''}
+        ${b.notes ? `<div class="popup-bin-notes">${b.notes}</div>` : ''}
+        ${b.action_text ? `<div class="popup-bin-action">↗ ${b.action_text}</div>` : ''}
+      </div>
+    </div>`;
+  }
 
+  // Builds the popup shadow host shared by both popups: backdrop, sheet,
+  // drag handle, title/close header, and the close/backdrop-click/Escape
+  // wiring. Callers supply only their own body HTML and get back the shadow
+  // root to do any further DOM work (e.g. filling in async content).
+  _popupShell(title, bodyHtml) {
+    this._closePopup();
     const host = document.createElement('div');
     host.setAttribute('tabindex', '-1');
     const shadow = host.attachShadow({ mode: 'open' });
@@ -1369,27 +1412,10 @@ ${this._popupCss()}
   <div class="popup-sheet">
     <div class="popup-drag"></div>
     <div class="popup-head">
-      <div class="popup-title">${bin.name}</div>
+      <div class="popup-title">${title}</div>
       <button class="popup-close" id="close-btn">✕</button>
     </div>
-    <div class="popup-section">
-      <div class="popup-label">Next collection</div>
-      <div class="popup-bin-card" style="background:${cl.bg}">
-        ${imgHtml(bin, 32, 44, 'popup-img')}
-        <div class="popup-bin-info">
-          <div class="popup-bin-name">${bin.name} ${badgesHtml(bin)}</div>
-          <div class="popup-bin-date">${nextLabel}</div>
-          ${bin.message ? `<div class="popup-bin-message">${bin.message}</div>` : ''}
-          ${bin.notes ? `<div class="popup-bin-notes">${bin.notes}</div>` : ''}
-          ${bin.action_text ? `<div class="popup-bin-action">↗ ${bin.action_text}</div>` : ''}
-        </div>
-      </div>
-    </div>
-    <div class="popup-divider"></div>
-    <div class="popup-section">
-      <div class="popup-label">Past collections</div>
-      <div id="past-list" class="popup-empty">Checking history…</div>
-    </div>
+    ${bodyHtml}
   </div>
 </div>`;
 
@@ -1405,6 +1431,29 @@ ${this._popupCss()}
     };
     document.addEventListener('keydown', onEsc);
     this._escHandler = onEsc;
+
+    return shadow;
+  }
+
+  // ── Bin detail — next confirmed date + real past history, tap target on any bin ──
+  _openBinDetail(bin) {
+    const c = this._config;
+    const cl = colorFor(bin.color);
+    const nextLabel = bin.days != null ? dateText(bin, 'both', c) : 'Unknown';
+
+    const bodyHtml = `
+    <div class="popup-section">
+      <div class="popup-label">Next collection</div>
+      ${this._popupBinCardHtml(bin, nextLabel)}
+    </div>
+    <div class="popup-divider"></div>
+    <div class="popup-section">
+      <div class="popup-label">Past collections</div>
+      <div id="past-list" class="popup-empty">Checking history…</div>
+    </div>`;
+
+    const shadow = this._popupShell(bin.name, bodyHtml);
+    const host = this._popup;
 
     this._fetchPastCollections(bin.entity, 4).then(dates => {
       if (this._popup !== host) return; // closed (or replaced) before the fetch resolved
@@ -1427,7 +1476,6 @@ ${this._popupCss()}
 
   // ── Popup — planner + detail view ───────────────────────────────────────────
   _openPopup(resolved) {
-    this._closePopup();
     const c = this._config;
     const bins = resolved || [];
 
@@ -1435,30 +1483,14 @@ ${this._popupCss()}
     const missedBins = bins.filter(b => b.days != null && b.days < 0);
     const upcoming = bins.filter(b => b.days != null && b.days > 0);
     const upGroups = groupByDate(upcoming);
-    const secMode = c.secondary_info && c.secondary_info !== 'days' ? c.secondary_info : 'both';
-
-    const binCardHtml = (b, dueLabel) => {
-      const cl = colorFor(b.color);
-      return `<div class="popup-bin-card" style="background:${cl.bg}">
-        ${imgHtml(b, 32, 44, 'popup-img')}
-        <div class="popup-bin-info">
-          <div class="popup-bin-name">${b.name} ${badgesHtml(b)}</div>
-          <div class="popup-bin-date">${dueLabel}</div>
-          ${b.message ? `<div class="popup-bin-message">${b.message}</div>` : ''}
-          ${b.delayNote ? `<div class="popup-bin-message">⚠ ${b.delayNote}</div>` : ''}
-          ${b.collectionType ? `<div class="popup-bin-message">${b.collectionType}</div>` : ''}
-          ${b.notes ? `<div class="popup-bin-notes">${b.notes}</div>` : ''}
-          ${b.action_text ? `<div class="popup-bin-action">↗ ${b.action_text}</div>` : ''}
-        </div>
-      </div>`;
-    };
+    const secMode = c.secondary_info !== 'days' ? c.secondary_info : 'both';
 
     const todaySection = (todayBins.length || missedBins.length) ? `
       <div class="popup-section">
         <div class="popup-label">Today</div>
         <div class="popup-today-row">
-          ${todayBins.map(b => binCardHtml(b, dateText(b, secMode, c))).join('')}
-          ${missedBins.map(b => binCardHtml(b, 'Missed collection')).join('')}
+          ${todayBins.map(b => this._popupBinCardHtml(b, dateText(b, secMode, c))).join('')}
+          ${missedBins.map(b => this._popupBinCardHtml(b, 'Missed collection')).join('')}
         </div>
       </div>
       ${upGroups.length ? '<div class="popup-divider"></div>' : ''}
@@ -1491,36 +1523,7 @@ ${this._popupCss()}
       ? '<div class="popup-empty">No upcoming collections</div>'
       : '';
 
-    const host = document.createElement('div');
-    host.setAttribute('tabindex', '-1');
-    const shadow = host.attachShadow({ mode: 'open' });
-
-    shadow.innerHTML = `
-<style>* { box-sizing: border-box; } ${this._popupCss()}</style>
-<div class="popup-bg" id="bg">
-  <div class="popup-sheet">
-    <div class="popup-drag"></div>
-    <div class="popup-head">
-      <div class="popup-title">${c.title || 'Bin Collection'}</div>
-      <button class="popup-close" id="close-btn">✕</button>
-    </div>
-    ${todaySection}${upcomingSection}${noneMsg}
-  </div>
-</div>`;
-
-    document.body.appendChild(host);
-    this._popup = host;
-
-    shadow.getElementById('close-btn').addEventListener('click', () => this._closePopup());
-    shadow.getElementById('bg').addEventListener('click', e => {
-      if (e.target === shadow.getElementById('bg')) this._closePopup();
-    });
-
-    const onEsc = e => {
-      if (e.key === 'Escape') { this._closePopup(); document.removeEventListener('keydown', onEsc); }
-    };
-    document.addEventListener('keydown', onEsc);
-    this._escHandler = onEsc;
+    this._popupShell(c.title, `${todaySection}${upcomingSection}${noneMsg}`);
   }
 
   _closePopup() {
