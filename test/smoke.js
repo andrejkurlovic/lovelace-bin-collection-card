@@ -125,6 +125,60 @@ console.log('## Upcoming/Quiet states show every bin tied for the soonest day, n
   assert(quietMainCount === 2, `quiet state also shows both tied bins as main (got ${quietMainCount})`);
 }
 
+console.log('## "Next: …" lines also name every tied bin, not just the first (the same bug, in 3 other places)');
+{
+  // Today state: General=0 today, Garden & Plastic both tied at 8 days -> the "Next:" line under it must name both
+  const ss = makeCard();
+  ss.hass = makeHass({
+    'sensor.general_bin_days': { state: '0', attributes: {} },
+    'sensor.garden_bin_days':  { state: '8', attributes: {} },
+    'sensor.plastic_bin_days': { state: '8', attributes: {} },
+    'sensor.paper_bin_days':   { state: '20', attributes: {} },
+  });
+  const nextLineEl = ss.shadowRoot.querySelector('[data-role="next-line"]');
+  assert(!!nextLineEl && /Garden.*&.*Plastic|Plastic.*&.*Garden/.test(nextLineEl.textContent), `smart-summary "Next:" line names both tied bins (got: "${nextLineEl && nextLineEl.textContent}")`);
+
+  // Same kind of tie, but as the *closest* bins (no same-day-0 bin to outrank them),
+  // on image-grid's shared header "Next: …" line
+  const grid = makeCard({ mode: 'image-grid' });
+  grid.hass = makeHass({
+    'sensor.general_bin_days': { state: '8', attributes: {} },
+    'sensor.garden_bin_days':  { state: '8', attributes: {} },
+    'sensor.plastic_bin_days': { state: '15', attributes: {} },
+    'sensor.paper_bin_days':   { state: '20', attributes: {} },
+  });
+  const headerNext = grid.shadowRoot.querySelector('[data-role="next-summary"]');
+  assert(!!headerNext && /General.*&.*Garden|Garden.*&.*General/.test(headerNext.textContent), `image-grid header "Next:" line names both tied bins (got: "${headerNext && headerNext.textContent}")`);
+
+  // Same tie via the patch path (not just full render) on timeline
+  const tl = makeCard({ mode: 'timeline' });
+  tl.hass = makeHass({
+    'sensor.general_bin_days': { state: '8', attributes: {} },
+    'sensor.garden_bin_days':  { state: '9', attributes: {} },
+    'sensor.plastic_bin_days': { state: '15', attributes: {} },
+    'sensor.paper_bin_days':   { state: '20', attributes: {} },
+  });
+  tl.hass = makeHass({
+    'sensor.general_bin_days': { state: '8', attributes: {} },
+    'sensor.garden_bin_days':  { state: '8', attributes: {} }, // ties up with General on the patch call
+    'sensor.plastic_bin_days': { state: '15', attributes: {} },
+    'sensor.paper_bin_days':   { state: '20', attributes: {} },
+  });
+  const tlHeaderNext = tl.shadowRoot.querySelector('[data-role="next-summary"]');
+  assert(!!tlHeaderNext && /General.*&.*Garden|Garden.*&.*General/.test(tlHeaderNext.textContent), `timeline header "Next:" line names both tied bins after a patch-path update (got: "${tlHeaderNext && tlHeaderNext.textContent}")`);
+
+  // compact mode's one-line summary, with no today bin so the tied-next case is isolated
+  const compact2 = makeCard({ mode: 'compact' });
+  compact2.hass = makeHass({
+    'sensor.general_bin_days': { state: '8', attributes: {} },
+    'sensor.garden_bin_days':  { state: '8', attributes: {} },
+    'sensor.plastic_bin_days': { state: '15', attributes: {} },
+    'sensor.paper_bin_days':   { state: '20', attributes: {} },
+  });
+  const summaryEl = compact2.shadowRoot.querySelector('[data-role="summary"]');
+  assert(!!summaryEl && /General.*&.*Garden|Garden.*&.*General/.test(summaryEl.textContent), `compact summary line names both tied bins when there's no today bin (got: "${summaryEl && summaryEl.textContent}")`);
+}
+
 console.log('## secondary_info modes actually render (dead in v3, wired in v4)');
 {
   const card = makeCard({ mode: 'image-grid', secondary_info: 'both' });

@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.1.1
+
+### Fixed
+- v4.0.3 fixed smart-summary's main visual to show every bin tied for the
+  soonest day, but three sibling spots were missed and still only named the
+  first one: smart-summary's own "Next: …" line (shown under the Today/
+  Missed/Tomorrow states), the shared "Next: …" header line used by
+  image-grid/timeline, and compact mode's one-line summary. All four now
+  consistently name every tied bin (e.g. "Next: Garden & Plastic in 8 days"
+  instead of just "Next: Garden in 8 days").
+
 ## v4.1.0
 
 ### Added

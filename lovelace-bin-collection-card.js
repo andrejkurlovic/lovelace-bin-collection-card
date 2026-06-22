@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.1.0
+ * lovelace-bin-collection-card v4.1.1
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -729,7 +729,7 @@ class BinCollectionCard extends HTMLElement {
 
     let nextLine = null;
     if ((state === 'today' || state === 'missed' || state === 'tomorrow') && nextOverall && c.show_future_bins !== false) {
-      nextLine = `Next: ${nextOverall.name} ${daysLabel(nextOverall.days, c)}`;
+      nextLine = `Next: ${listNames(nextGroup)} ${daysLabel(nextOverall.days, c)}`;
     }
 
     let extraBins = [];
@@ -856,9 +856,10 @@ class BinCollectionCard extends HTMLElement {
     const next = bins.find(b => b.days != null);
     let nextLine = '';
     if (c.show_next_summary !== false && next) {
+      const nextGroup = bins.filter(b => b.days === next.days);
       const label = dateText(next, c.secondary_info || 'days', c);
       const cls = next.days === 0 ? 'hl-today' : next.days === 1 ? 'hl-tomorrow' : '';
-      nextLine = `<div class="header-sub" data-role="next-summary">Next: ${next.name} — <span class="${cls}">${label}</span></div>`;
+      nextLine = `<div class="header-sub" data-role="next-summary">Next: ${listNames(nextGroup)} — <span class="${cls}">${label}</span></div>`;
     }
     return `<div class="header" id="header">
       <div class="header-left">
@@ -875,9 +876,10 @@ class BinCollectionCard extends HTMLElement {
     const next = bins.find(b => b.days != null);
     const el = this.shadowRoot.querySelector('[data-role="next-summary"]');
     if (!el || !next) return;
+    const nextGroup = bins.filter(b => b.days === next.days);
     const label = dateText(next, c.secondary_info || 'days', c);
     const cls = next.days === 0 ? 'hl-today' : next.days === 1 ? 'hl-tomorrow' : '';
-    el.innerHTML = `Next: ${next.name} — <span class="${cls}">${label}</span>`;
+    el.innerHTML = `Next: ${listNames(nextGroup)} — <span class="${cls}">${label}</span>`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1019,7 +1021,10 @@ class BinCollectionCard extends HTMLElement {
     const todayBins = bins.filter(b => b.days === 0);
     const next = bins.find(b => b.days != null);
     if (todayBins.length) return `${listNames(todayBins)} today`;
-    if (next) return `${next.name} ${daysLabel(next.days, c)}`;
+    if (next) {
+      const nextGroup = bins.filter(b => b.days === next.days);
+      return `${listNames(nextGroup)} ${daysLabel(next.days, c)}`;
+    }
     return 'No collections due';
   }
 

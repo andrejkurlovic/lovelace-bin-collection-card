@@ -1,6 +1,6 @@
 {
   "name": "lovelace-bin-collection-card",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "Home Assistant Lovelace card for UK bin/waste collection schedules",
   "author": "Andrej Kurlovic",
   "license": "MIT",
