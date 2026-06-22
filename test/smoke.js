@@ -98,6 +98,33 @@ console.log('## Quiet state (next collection >= 7 days away)');
   assert(/Next known:/.test(html), 'quiet subtitle uses "Next known:" framing');
 }
 
+console.log('## Upcoming/Quiet states show every bin tied for the soonest day, not just one');
+{
+  // Upcoming: Garden and Plastic both due in 5 days (within "this week") -> both should be main bins
+  const upcoming = makeCard();
+  upcoming.hass = makeHass({
+    'sensor.general_bin_days': { state: '5', attributes: {} },
+    'sensor.garden_bin_days':  { state: '5', attributes: {} },
+    'sensor.plastic_bin_days': { state: '10', attributes: {} },
+    'sensor.paper_bin_days':   { state: '20', attributes: {} },
+  });
+  const mainCount = upcoming.shadowRoot.querySelectorAll('.ss-bin').length;
+  assert(mainCount === 2, `upcoming state shows both tied bins as main (got ${mainCount})`);
+  assert(/General.*&.*Garden|Garden.*&.*General/.test(upcoming.shadowRoot.innerHTML), 'subtitle names both tied bins');
+
+  // Quiet: General and Garden both due in 9 days (the >=7 day "quiet" threshold), Plastic/Paper further out
+  const quiet = makeCard();
+  quiet.hass = makeHass({
+    'sensor.general_bin_days': { state: '9', attributes: {} },
+    'sensor.garden_bin_days':  { state: '9', attributes: {} },
+    'sensor.plastic_bin_days': { state: '15', attributes: {} },
+    'sensor.paper_bin_days':   { state: '23', attributes: {} },
+  });
+  assert(quiet.shadowRoot.innerHTML.includes('No Collections This Week'), 'quiet header shows');
+  const quietMainCount = quiet.shadowRoot.querySelectorAll('.ss-bin').length;
+  assert(quietMainCount === 2, `quiet state also shows both tied bins as main (got ${quietMainCount})`);
+}
+
 console.log('## secondary_info modes actually render (dead in v3, wired in v4)');
 {
   const card = makeCard({ mode: 'image-grid', secondary_info: 'both' });
@@ -229,6 +256,13 @@ console.log('## compact mode dot fading is gated by fade_future_bins + days_ahea
   const noFade = makeCard({ mode: 'compact', fade_future_bins: false, days_ahead: 10, show_all_bins: true });
   noFade.hass = makeHass();
   assert(noFade.shadowRoot.querySelectorAll('.compact-dot.future').length === 0, 'fade_future_bins:false means no compact dot fades regardless of days_ahead');
+
+  // the small bin images shown alongside the dots must fade in lockstep with their own dot,
+  // not just the dot itself (this was the gap: dots faded, images stayed at full brightness)
+  const generalImgWrap = card.shadowRoot.querySelector('.compact-img-wrap[data-img-key="sensor.general_bin_days"]');
+  const gardenImgWrap = card.shadowRoot.querySelector('.compact-img-wrap[data-img-key="sensor.garden_bin_days"]');
+  assert(!!generalImgWrap && !generalImgWrap.classList.contains('faded'), 'today bin image is not faded');
+  assert(!!gardenImgWrap && gardenImgWrap.classList.contains('faded'), 'beyond-threshold bin image is faded, matching its dot');
 }
 
 console.log('## Visual editor mounts, renders bins, supports reordering and colour swatches');

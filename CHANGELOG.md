@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.0.3
+
+### Fixed
+- **compact mode**: the small bin images shown next to the dots didn't fade
+  along with their dot — the dot would correctly dim for a far-future bin but
+  its image stayed at full brightness. Both now fade together.
+- **smart-summary Next Collection / No Collections This Week states**: when
+  two or more bins were tied for the soonest day (e.g. Garden and Plastic both
+  due in 9 days), only the first one was shown as the "main" bin and named in
+  the subtitle. All bins sharing that soonest day now show together.
+
 ## v4.0.2
 
 ### Fixed

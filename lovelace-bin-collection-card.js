@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.0.2
+ * lovelace-bin-collection-card v4.0.3
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -682,7 +682,10 @@ class BinCollectionCard extends HTMLElement {
     const tomorrowBins = resolved.filter(b => b.days === 1);
     const restSorted = resolved.filter(b => b.days != null && b.days > 1); // already sorted
     const nextOverall = restSorted[0] || null;
-    const furtherBins = restSorted.slice(1);
+    // Group every bin sharing the soonest "next" day, not just the first one — a tie
+    // between e.g. Garden and Plastic both due in 9 days should show both, not just Garden.
+    const nextGroup = nextOverall ? restSorted.filter(b => b.days === nextOverall.days) : [];
+    const furtherBins = nextOverall ? restSorted.filter(b => b.days !== nextOverall.days) : [];
 
     let state, headerTitle, headerSub, actionHint, mainBins;
 
@@ -707,15 +710,15 @@ class BinCollectionCard extends HTMLElement {
     } else if (nextOverall && nextOverall.days < 7) {
       state = 'upcoming';
       headerTitle = 'Next Collection';
-      headerSub = `${nextOverall.name} ${daysLabel(nextOverall.days, c)}`;
-      actionHint = nextOverall.action_text || null;
-      mainBins = [nextOverall];
+      headerSub = `${listNames(nextGroup)} ${nextGroup.length > 1 ? 'are' : 'is'} due ${daysLabel(nextOverall.days, c)}`;
+      actionHint = firstActionText(nextGroup);
+      mainBins = nextGroup;
     } else if (nextOverall) {
       state = 'quiet';
       headerTitle = 'No Collections This Week';
-      headerSub = `Next known: ${nextOverall.name} ${daysLabel(nextOverall.days, c)}`;
+      headerSub = `Next known: ${listNames(nextGroup)} ${nextGroup.length > 1 ? 'are' : 'is'} due ${daysLabel(nextOverall.days, c)}`;
       actionHint = null;
-      mainBins = [nextOverall];
+      mainBins = nextGroup;
     } else {
       state = 'unknown';
       headerTitle = 'No Data';
@@ -1032,7 +1035,7 @@ class BinCollectionCard extends HTMLElement {
         <div class="compact-title">${c.title || 'Bin Collection'}</div>
         <div class="compact-summary" data-role="summary">${summary}</div>
       </div>
-      ${bins.slice(0, 3).map(b => imgHtml(b, 22, 30, 'compact-img')).join('')}
+      ${bins.slice(0, 3).map(b => `<div class="compact-img-wrap ${this._isFaded(b) ? 'faded' : ''}" data-img-key="${b.entity}">${imgHtml(b, 22, 30, 'compact-img')}</div>`).join('')}
     </div>`;
     const struct = bins.map(b => b.entity).join(',');
     return { html, struct };
@@ -1054,6 +1057,8 @@ class BinCollectionCard extends HTMLElement {
         dot.classList.toggle('future', this._isFaded(b));
         dot.title = `${b.name}: ${daysLabel(b.days, c)}`;
       }
+      const imgWrap = sr.querySelector(`.compact-img-wrap[data-img-key="${b.entity}"]`);
+      if (imgWrap) imgWrap.classList.toggle('faded', this._isFaded(b));
     });
     return true;
   }
@@ -1199,6 +1204,7 @@ class BinCollectionCard extends HTMLElement {
 .compact-title { font-size: 13px; font-weight: 700; }
 .compact-summary { font-size: 11px; color: var(--secondary-text-color, rgba(255,255,255,0.55)); }
 .compact-img { flex-shrink: 0; }
+.compact-img-wrap { display: inline-flex; flex-shrink: 0; }
 
 /* ── EMPTY ── */
 .empty-state { padding: 22px 16px; text-align: center; font-size: 13px; color: var(--secondary-text-color, rgba(255,255,255,0.35)); }
