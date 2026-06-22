@@ -1,5 +1,30 @@
 # Changelog
 
+## v5.0.2
+
+### Fixed
+- **`fade_future_bins` had no effect in timeline mode.** The v5.0.0 rewrite
+  never ported the row-level fade the old implementation applied to
+  `.tl-row` for groups beyond the fade threshold — timeline rows simply
+  never faded regardless of the setting. Restored: the whole row (date
+  label + chips) now fades together, same as before the rewrite.
+- **Timeline's empty-state message** had drifted to match image-grid's
+  ("No collections due within X days") instead of its own original, shorter
+  message ("No collections due soon").
+- The test suite had a coverage gap that let the fade bug ship unnoticed:
+  the "fade works" assertion for timeline checked for the literal string
+  `"faded"` anywhere in the card's full `innerHTML` — which always matched
+  because the shared `.faded { opacity: ... }` CSS rule contains that exact
+  text in the `<style>` block, regardless of whether any element actually
+  used the class. Replaced with a real DOM query (`.tl-row.faded`), and
+  added the negative case (`fade_future_bins:false` → no row fades) for
+  every mode, plus dedicated coverage for `show_future_bins` hiding groups
+  beyond tomorrow in timeline (never tested before this pass).
+- Re-audited every other config option against the pre-rewrite
+  implementation's exact per-mode scope (`highlight_today`, `show_header`,
+  `show_next_summary`, `secondary_info`, `display_density`) — all confirmed
+  to match; no further gaps found.
+
 ## v5.0.1
 
 ### Docs

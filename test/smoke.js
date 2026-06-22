@@ -192,11 +192,25 @@ console.log('## highlight_today: subtle vs strong are visually distinct');
 }
 
 console.log('## fade_future_bins works across modes, gated per-card');
-for (const mode of ['image-grid', 'row', 'timeline']) {
+for (const mode of ['image-grid', 'row']) {
   const card = await makeCard({ mode, fade_future_bins: true, days_ahead: 14, show_all_bins: true });
   await setHass(card, makeHass({ 'sensor.paper_bin_days': { state: '14', attributes: {} } }));
-  const hasFaded = mode === 'timeline' ? html(card).includes('faded') : !!card.shadowRoot.querySelector('.faded');
-  assert(hasFaded, `${mode}: faded class present on far-future bin when fade_future_bins:true`);
+  assert(!!card.shadowRoot.querySelector('.bin-tile.faded'), `${mode}: faded class present on far-future bin when fade_future_bins:true`);
+}
+for (const mode of ['image-grid', 'row']) {
+  const card = await makeCard({ mode, fade_future_bins: false, days_ahead: 14, show_all_bins: true });
+  await setHass(card, makeHass({ 'sensor.paper_bin_days': { state: '14', attributes: {} } }));
+  assert(!card.shadowRoot.querySelector('.bin-tile.faded'), `${mode}: no tile fades when fade_future_bins:false, even far-future`);
+}
+{
+  const card = await makeCard({ mode: 'timeline', fade_future_bins: true, days_ahead: 14, show_all_bins: true });
+  await setHass(card, makeHass({ 'sensor.paper_bin_days': { state: '14', attributes: {} } }));
+  assert(!!card.shadowRoot.querySelector('.tl-row.faded'), 'timeline: far-future row fades when fade_future_bins:true');
+}
+{
+  const card = await makeCard({ mode: 'timeline', fade_future_bins: false, days_ahead: 14, show_all_bins: true });
+  await setHass(card, makeHass({ 'sensor.paper_bin_days': { state: '14', attributes: {} } }));
+  assert(!card.shadowRoot.querySelector('.tl-row.faded'), 'timeline: no row fades when fade_future_bins:false, even far-future');
 }
 {
   const card = await makeCard({ mode: 'compact', fade_future_bins: true, days_ahead: 14, show_all_bins: true });
@@ -219,6 +233,29 @@ console.log('## show_future_bins:false hides the "Next:" line in smart-summary')
   const card = await makeCard({ show_future_bins: false });
   await setHass(card, makeHass());
   assert(!card.shadowRoot.querySelector('.ss-next-line'), 'hides Next: line when show_future_bins is false');
+}
+
+console.log('## show_future_bins:false hides groups beyond tomorrow in timeline');
+{
+  // General=0 (today), Garden=1 (tomorrow), Plastic=3, Paper=14 — only today/tomorrow should remain.
+  const card = await makeCard({ mode: 'timeline', show_future_bins: false, show_all_bins: true });
+  await setHass(card, makeHass({
+    'sensor.general_bin_days': { state: '0', attributes: {} },
+    'sensor.garden_bin_days': { state: '1', attributes: {} },
+    'sensor.plastic_bin_days': { state: '3', attributes: {} },
+    'sensor.paper_bin_days': { state: '14', attributes: {} },
+  }));
+  assert(card.shadowRoot.querySelectorAll('.tl-row').length === 2, 'only today/tomorrow groups render when show_future_bins is false');
+}
+{
+  const card = await makeCard({ mode: 'timeline', show_future_bins: true, show_all_bins: true });
+  await setHass(card, makeHass({
+    'sensor.general_bin_days': { state: '0', attributes: {} },
+    'sensor.garden_bin_days': { state: '1', attributes: {} },
+    'sensor.plastic_bin_days': { state: '3', attributes: {} },
+    'sensor.paper_bin_days': { state: '14', attributes: {} },
+  }));
+  assert(card.shadowRoot.querySelectorAll('.tl-row').length === 4, 'all groups render when show_future_bins is true (default)');
 }
 
 console.log('## Optional delayed/changed badges only appear when exposed');

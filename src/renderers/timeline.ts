@@ -1,6 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import type { CardConfig, ResolvedBin } from '../types';
+import { fadeThreshold } from '../models/bin';
 import { groupByDate } from '../services/sorting';
 import { formatDay } from '../utils/dates';
 import { colorFor } from '../utils/entities';
@@ -25,8 +26,10 @@ export function renderTimeline(bins: ResolvedBin[], config: CardConfig, ctx: Ren
   }
 
   if (!groups.length) {
-    return html`${header}<div class="empty-state">No collections due within ${config.days_ahead} days</div>`;
+    return html`${header}<div class="empty-state">No collections due soon</div>`;
   }
+
+  const threshold = fadeThreshold(config);
 
   return html`
     ${header}
@@ -38,8 +41,9 @@ export function renderTimeline(bins: ResolvedBin[], config: CardConfig, ctx: Ren
           const d = g.days;
           const dayLabel = d != null ? formatDay(d) : 'Unknown';
           const cls = d === 0 ? 'tl-today' : d === 1 ? 'tl-tomorrow' : '';
+          const faded = config.fade_future_bins && d != null && d > threshold;
           return html`
-            <div class="tl-row">
+            <div class="tl-row ${faded ? 'faded' : ''}">
               <div class="tl-date ${cls}">${dayLabel}</div>
               <div class="tl-bins">${repeat(g.bins, (b) => b.entity, (b) => chip(b, ctx))}</div>
             </div>`;
