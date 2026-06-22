@@ -4,12 +4,12 @@
 
 A situational-awareness Home Assistant Lovelace card for UK bin/waste collection
 schedules. It answers one question: **what do I need to do today, and what's
-next?** Dark glassy design, four display modes, a full visual editor, and a
+next?** Dark glassy design, five display modes, a full visual editor, and a
 popup that doubles as a quick planner.
 
 ## Features
 
-- **Four modes**: `smart-summary` (default), `image-grid`, `timeline`, `compact`
+- **Five modes**: `smart-summary` (default), `image-grid`, `row`, `timeline`, `compact`
 - **smart-summary** has six states: Collection Day, Missed Collection, Prepare
   Tonight, Next Collection, No Collections This Week, No Data
 - **Real bin images** as the primary visual — with icon fallback
@@ -50,7 +50,7 @@ type: module
 ```yaml
 type: custom:bin-collection-card
 title: Bin Collection
-mode: smart-summary       # smart-summary | image-grid | timeline | compact
+mode: smart-summary       # smart-summary | image-grid | row | timeline | compact
 days_ahead: 14
 show_header: true
 show_next_summary: true
@@ -98,7 +98,7 @@ bins:
 | key | type | default | notes |
 |---|---|---|---|
 | `title` | string | `Bin Collection` | |
-| `mode` | enum | `smart-summary` | `smart-summary` \| `image-grid` \| `timeline` \| `compact` |
+| `mode` | enum | `smart-summary` | `smart-summary` \| `image-grid` \| `row` \| `timeline` \| `compact` |
 | `days_ahead` | number | `14` | bins beyond this are hidden unless `show_all_bins` |
 | `show_header` | boolean | `true` | |
 | `show_next_summary` | boolean | `true` | the "Next: …" line under the header in image-grid/timeline |

@@ -404,6 +404,36 @@ const tick = () => new Promise(r => setTimeout(r, 0));
     card._closePopup();
   }
 
+  console.log('## row mode: all displayed bins render in a single row');
+  {
+    const card = makeCard({ mode: 'row' });
+    card.hass = makeHass();
+    const container = card.shadowRoot.querySelector('.row');
+    assert(!!container, 'row container renders');
+    assert(/grid-template-columns:\s*repeat\(4,\s*1fr\)/.test(container.getAttribute('style') || ''), 'row container has one column per displayed bin (got: "' + container.getAttribute('style') + '")');
+    assert(card.shadowRoot.querySelectorAll('.row .bin-tile').length === 4, 'all 4 bins render as tiles inside the row');
+  }
+
+  console.log('## row mode patch path preserves element identity (same anti-flicker fix as image-grid)');
+  {
+    const card = makeCard({ mode: 'row' });
+    card.hass = makeHass();
+    const imgBefore = card.shadowRoot.querySelector('.row .bin-tile[data-key="sensor.paper_bin_days"] img, .row .bin-tile[data-key="sensor.paper_bin_days"] ha-icon');
+    card.hass = makeHass({ 'sensor.general_bin_days': { state: '1', attributes: {} } }); // unrelated bin changes
+    const imgAfter = card.shadowRoot.querySelector('.row .bin-tile[data-key="sensor.paper_bin_days"] img, .row .bin-tile[data-key="sensor.paper_bin_days"] ha-icon');
+    assert(!!imgBefore && imgBefore === imgAfter, 'unrelated tile element identity preserved across an update in row mode');
+  }
+
+  console.log('## A bin missing at setConfig time (hass not loaded yet) no longer leaves a stale "no entity" warning once hass arrives');
+  {
+    // Mirrors HA's real lifecycle: setConfig() runs before hass is assigned.
+    const card = makeCard({ mode: 'image-grid', show_all_bins: true });
+    assert(card.shadowRoot.querySelectorAll('.tile-warn').length === 4, 'all 4 tiles show "no entity" before hass is available');
+    card.hass = makeHass();
+    assert(card.shadowRoot.querySelectorAll('.tile-warn').length === 0, 'warning clears once hass resolves real bin data (was stuck stale before the struct-key fix)');
+    assert(card.shadowRoot.querySelectorAll('.bin-tile').length === 4, 'all 4 tiles still render with real data');
+  }
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();

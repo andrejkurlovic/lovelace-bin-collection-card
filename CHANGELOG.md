@@ -1,5 +1,29 @@
 # Changelog
 
+## v4.2.0
+
+### Added
+- **New `row` mode**: all displayed bins laid out in a single horizontal row
+  (one column per bin), instead of image-grid's 2-column layout. Same tile
+  content (image, name, days/date label, urgency dot, badges) — just a
+  different arrangement, for dashboards with enough width to show every bin
+  side by side.
+
+### Fixed
+- **Stale "no entity" warning after hass loads**: Home Assistant calls
+  `setConfig()` on a card before `hass` is available. That first render
+  marked every bin as missing (no data yet) and baked a "no entity" warning
+  into each image-grid/compact tile's HTML. When `hass` arrived moments
+  later, if the bin set hadn't changed shape, the renderer patched
+  text/classes in place instead of rebuilding — and the patch path never
+  removed that stale warning. This mostly surfaced when `days_ahead` was
+  generous enough (or `show_all_bins` was set) that no bin ever got filtered
+  out once real data loaded, since filtering being the only other thing that
+  could force a rebuild was what hid the bug the rest of the time. The
+  structural signature used to decide patch-vs-rebuild now also encodes
+  whether each bin resolved to real data, so a bin flipping from
+  missing→resolved always triggers a correct rebuild.
+
 ## v4.1.1
 
 ### Fixed

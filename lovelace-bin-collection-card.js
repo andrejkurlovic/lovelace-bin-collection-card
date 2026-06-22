@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.1.1
+ * lovelace-bin-collection-card v4.2.0
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -211,7 +211,7 @@ class BinCollectionCardEditor extends HTMLElement {
   _render() {
     if (!this._config) return;
     const c = this._config;
-    const MODES = ['smart-summary', 'image-grid', 'timeline', 'compact'];
+    const MODES = ['smart-summary', 'image-grid', 'row', 'timeline', 'compact'];
     const HIGHLIGHTS = ['off', 'subtle', 'strong'];
     const SECONDARY = ['days', 'date', 'both'];
     const DENSITY = ['calm', 'balanced', 'rich'];
@@ -584,6 +584,7 @@ class BinCollectionCard extends HTMLElement {
   getCardSize() {
     const mode = this._config?.mode || 'smart-summary';
     if (mode === 'compact') return 1;
+    if (mode === 'row') return 2;
     if (mode === 'smart-summary') return 4;
     return 3;
   }
@@ -662,6 +663,7 @@ class BinCollectionCard extends HTMLElement {
     if (mode === 'timeline') return this._renderTimeline(this._filterForDisplay(resolved));
     if (mode === 'compact') return this._renderCompact(this._filterForDisplay(resolved));
     if (mode === 'image-grid') return this._renderImageGrid(this._filterForDisplay(resolved));
+    if (mode === 'row') return this._renderRow(this._filterForDisplay(resolved));
     return this._renderSmartSummary(resolved);
   }
 
@@ -669,6 +671,7 @@ class BinCollectionCard extends HTMLElement {
     if (mode === 'timeline') return this._patchTimeline(this._filterForDisplay(resolved));
     if (mode === 'compact') return this._patchCompact(this._filterForDisplay(resolved));
     if (mode === 'image-grid') return this._patchImageGrid(this._filterForDisplay(resolved));
+    if (mode === 'row') return this._patchRow(this._filterForDisplay(resolved));
     return this._patchSmartSummary(resolved);
   }
 
@@ -885,41 +888,33 @@ class BinCollectionCard extends HTMLElement {
   // ══════════════════════════════════════════════════════════════════════════
   // IMAGE GRID MODE
   // ══════════════════════════════════════════════════════════════════════════
-  _renderImageGrid(bins) {
+  // Encodes entity identity *and* whether it currently resolved to a real hass
+  // state. Plain entity-id-only struct keys can't tell "missing" from "resolved"
+  // apart, so a bin that starts missing (hass not loaded yet at setConfig time)
+  // and later resolves would patch in place instead of rebuilding — leaving a
+  // stale "no entity" warning baked into HTML that's never re-evaluated.
+  _binStructKey(b) {
+    return `${b.entity}${b.missing ? '!' : ''}`;
+  }
+
+  // Shared by image-grid (2-column) and row (single row) — same tile content,
+  // just a different container class/column layout.
+  _renderTileLayout(bins, containerClass, containerStyle) {
     const c = this._config;
     const header = this._headerHtml(bins);
     if (!bins.length) {
       return { html: `${header}<div class="empty-state">No collections due within ${c.days_ahead || 14} days</div>`, struct: 'empty' };
     }
     const cards = bins.map(b => this._gridTileHtml(b)).join('');
-    const struct = bins.map(b => b.entity).join(',');
-    return { html: `${header}<div class="grid">${cards}</div>`, struct };
+    const struct = bins.map(b => this._binStructKey(b)).join(',');
+    const style = containerStyle ? ` style="${containerStyle}"` : '';
+    return { html: `${header}<div class="${containerClass}"${style}>${cards}</div>`, struct };
   }
 
-  _gridTileHtml(b) {
-    const c = this._config;
-    const hl = c.highlight_today || 'subtle';
-    const cl = colorFor(b.color);
-    const urg = b.days === 0 ? 'today' : b.days === 1 ? 'tomorrow' : (b.days != null && b.days > 1 && b.days <= 3) ? 'soon' : '';
-    const faded = this._isFaded(b);
-    const label = b.missing ? '—' : dateText(b, c.secondary_info || 'days', c);
-    const dotOn = (urg === 'today' || urg === 'tomorrow') && hl !== 'off';
-
-    return `<div class="bin-tile ${faded ? 'faded' : ''}" style="background:${cl.bg}" data-entity="${b.entity}" data-key="${b.entity}">
-      <div class="urg-dot ${urg === 'today' ? 'today-dot' : urg === 'tomorrow' ? 'tomorrow-dot' : ''}" data-role="urg-dot" style="${dotOn ? '' : 'display:none;'}"></div>
-      <div class="tile-img-wrap">${imgHtml(b, 38, 52, 'tile-img')}</div>
-      <div class="tile-name">${b.name}</div>
-      <div class="tile-label ${urg}" data-role="label">${label}</div>
-      ${b.missing ? '<div class="tile-warn">no entity</div>' : ''}
-      <div class="tile-badges" data-role="badges">${badgesHtml(b)}</div>
-      <div class="tile-accent" style="background:${cl.accent}"></div>
-    </div>`;
-  }
-
-  _patchImageGrid(bins) {
+  _patchTileLayout(bins) {
     const sr = this.shadowRoot;
     const root = sr.querySelector('.card');
-    const struct = bins.length ? bins.map(b => b.entity).join(',') : 'empty';
+    const struct = bins.length ? bins.map(b => this._binStructKey(b)).join(',') : 'empty';
     if (!root || root.dataset.struct !== struct || !bins.length) return false;
 
     this._patchHeader(bins);
@@ -945,6 +940,44 @@ class BinCollectionCard extends HTMLElement {
       if (badgesEl) badgesEl.innerHTML = badgesHtml(b);
     });
     return true;
+  }
+
+  _renderImageGrid(bins) {
+    return this._renderTileLayout(bins, 'grid');
+  }
+
+  _patchImageGrid(bins) {
+    return this._patchTileLayout(bins);
+  }
+
+  // Single horizontal row of all displayed bins — matches the "all bins in one
+  // line" layout some users build by hand with a grid card + button-cards.
+  _renderRow(bins) {
+    return this._renderTileLayout(bins, 'row', bins.length ? `grid-template-columns: repeat(${bins.length}, 1fr)` : '');
+  }
+
+  _patchRow(bins) {
+    return this._patchTileLayout(bins);
+  }
+
+  _gridTileHtml(b) {
+    const c = this._config;
+    const hl = c.highlight_today || 'subtle';
+    const cl = colorFor(b.color);
+    const urg = b.days === 0 ? 'today' : b.days === 1 ? 'tomorrow' : (b.days != null && b.days > 1 && b.days <= 3) ? 'soon' : '';
+    const faded = this._isFaded(b);
+    const label = b.missing ? '—' : dateText(b, c.secondary_info || 'days', c);
+    const dotOn = (urg === 'today' || urg === 'tomorrow') && hl !== 'off';
+
+    return `<div class="bin-tile ${faded ? 'faded' : ''}" style="background:${cl.bg}" data-entity="${b.entity}" data-key="${b.entity}">
+      <div class="urg-dot ${urg === 'today' ? 'today-dot' : urg === 'tomorrow' ? 'tomorrow-dot' : ''}" data-role="urg-dot" style="${dotOn ? '' : 'display:none;'}"></div>
+      <div class="tile-img-wrap">${imgHtml(b, 38, 52, 'tile-img')}</div>
+      <div class="tile-name">${b.name}</div>
+      <div class="tile-label ${urg}" data-role="label">${label}</div>
+      ${b.missing ? '<div class="tile-warn">no entity</div>' : ''}
+      <div class="tile-badges" data-role="badges">${badgesHtml(b)}</div>
+      <div class="tile-accent" style="background:${cl.accent}"></div>
+    </div>`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1042,14 +1075,14 @@ class BinCollectionCard extends HTMLElement {
       </div>
       ${bins.slice(0, 3).map(b => `<div class="compact-img-wrap ${this._isFaded(b) ? 'faded' : ''}" data-img-key="${b.entity}" data-entity="${b.entity}">${imgHtml(b, 22, 30, 'compact-img')}</div>`).join('')}
     </div>`;
-    const struct = bins.map(b => b.entity).join(',');
+    const struct = bins.map(b => this._binStructKey(b)).join(',');
     return { html, struct };
   }
 
   _patchCompact(bins) {
     const sr = this.shadowRoot;
     const root = sr.querySelector('.card');
-    const struct = bins.map(b => b.entity).join(',');
+    const struct = bins.map(b => this._binStructKey(b)).join(',');
     if (!root || root.dataset.struct !== struct) return false;
 
     const c = this._config;
@@ -1165,6 +1198,10 @@ class BinCollectionCard extends HTMLElement {
 
 /* ── IMAGE GRID ── */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 0 10px 12px; }
+.row { display: grid; gap: 6px; padding: 0 10px 12px; }
+.row .bin-tile { padding: 8px 4px 8px; }
+.row .tile-name { font-size: 11px; }
+.row .tile-label { font-size: 10px; }
 .bin-tile {
   border-radius: 13px; padding: 12px 8px 10px; display: flex; flex-direction: column; align-items: center; gap: 5px;
   cursor: pointer; position: relative; overflow: hidden;
