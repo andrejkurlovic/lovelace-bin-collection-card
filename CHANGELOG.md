@@ -1,5 +1,20 @@
 # Changelog
 
+## v4.1.0
+
+### Added
+- **Bin detail view**: tapping a bin's icon/image (in any mode, including
+  compact — previously not individually tappable at all) now opens a detail
+  popup instead of HA's native more-info dialog. It shows:
+  - **Next collection**: the one confirmed date the integration gives us, plus
+    notes/action hint/badges — no projection beyond it.
+  - **Past collections**: up to the 4 most recent, found from real recorder
+    history (detecting when the sensor's state actually transitioned to `0`).
+    If your recorder doesn't retain history that far back, it says so plainly
+    ("No collection history available yet") rather than fabricating dates.
+    Deliberately does **not** project future dates from the historical
+    pattern — only what's actually confirmed is shown.
+
 ## v4.0.3
 
 ### Fixed

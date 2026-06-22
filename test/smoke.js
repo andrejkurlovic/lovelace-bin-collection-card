@@ -276,5 +276,80 @@ console.log('## Visual editor mounts, renders bins, supports reordering and colo
   assert(editor.querySelectorAll('.swatch').length > 0, 'colour swatches render instead of a plain select');
 }
 
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+function withHistory(hass, series) {
+  hass.callApi = async () => [series];
+  return hass;
+}
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+(async () => {
+  console.log('## Bin tap opens a detail view (next + real past history), no longer native more-info');
+  {
+    const card = makeCard();
+    card.hass = withHistory(makeHass(), [
+      { state: '3', last_changed: '2026-01-01T00:00:00.000Z' },
+      { state: '0', last_changed: '2026-01-05T00:00:00.000Z' },
+      { state: '5', last_changed: '2026-01-06T00:00:00.000Z' },
+      { state: '0', last_changed: '2026-01-12T00:00:00.000Z' },
+      { state: '0', last_changed: '2026-01-12T08:00:00.000Z' }, // same collection day, must not double-count
+      { state: '6', last_changed: '2026-01-13T00:00:00.000Z' },
+      { state: '0', last_changed: '2026-01-26T00:00:00.000Z' },
+    ]);
+    const tile = card.shadowRoot.querySelector('[data-entity="sensor.general_bin_days"]');
+    assert(!!tile, 'today\'s main bin element is tappable');
+
+    let moreInfoFired = false;
+    card.addEventListener('hass-more-info', () => { moreInfoFired = true; });
+    tile.dispatchEvent(new CustomEvent('click', { bubbles: true }));
+
+    assert(!moreInfoFired, 'bin tap no longer dispatches native hass-more-info');
+    assert(!!card._popup, 'bin tap opens a detail popup');
+    let html = card._popup.shadowRoot.innerHTML;
+    assert(html.includes('Next collection'), 'detail popup shows the next-collection section');
+    assert(html.includes('Checking history'), 'shows a loading state before history resolves');
+
+    await tick(); await tick();
+    html = card._popup.shadowRoot.innerHTML;
+    const chipCount = card._popup.shadowRoot.querySelectorAll('.popup-tl-chip').length;
+    assert(chipCount === 3, `shows the 3 distinct rising-edge-into-zero dates found, deduped (got ${chipCount})`);
+    assert(!html.includes('Checking history'), 'loading text replaced once history resolves');
+    card._closePopup();
+  }
+
+  console.log('## No history available is shown honestly, never fabricated');
+  {
+    const card = makeCard();
+    card.hass = withHistory(makeHass(), []);
+    const tile = card.shadowRoot.querySelector('[data-entity="sensor.general_bin_days"]');
+    tile.dispatchEvent(new CustomEvent('click', { bubbles: true }));
+    await tick(); await tick();
+    assert(card._popup.shadowRoot.innerHTML.includes('No collection history available yet'), 'empty recorder history shows an honest message');
+    card._closePopup();
+  }
+
+  console.log('## Missing hass.callApi (e.g. older frontend) degrades gracefully, never throws');
+  {
+    const card = makeCard();
+    card.hass = makeHass(); // no callApi at all
+    const tile = card.shadowRoot.querySelector('[data-entity="sensor.general_bin_days"]');
+    tile.dispatchEvent(new CustomEvent('click', { bubbles: true }));
+    await tick(); await tick();
+    assert(card._popup.shadowRoot.innerHTML.includes('No collection history available yet'), 'missing callApi falls back to the same honest message');
+    card._closePopup();
+  }
+
+  console.log('## compact mode bins are now individually tappable (previously only the whole row opened the summary popup)');
+  {
+    const card = makeCard({ mode: 'compact' });
+    card.hass = withHistory(makeHass(), []);
+    const dot = card.shadowRoot.querySelector('.compact-dot[data-entity="sensor.general_bin_days"]');
+    assert(!!dot, 'compact dots carry data-entity now');
+    dot.dispatchEvent(new CustomEvent('click', { bubbles: true }));
+    await tick(); await tick();
+    assert(!!card._popup, 'tapping a compact dot opens the bin detail popup');
+    card._closePopup();
+  }
+
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})();

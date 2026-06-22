@@ -19,6 +19,9 @@ popup that doubles as a quick planner.
   drag-free up/down bin reordering
 - **Popup** — Today + Upcoming sections, acts as a lightweight planner/detail
   view, shows notes for every bin (not just today's)
+- **Bin detail view** — tap any bin's icon/image to see its next confirmed
+  collection plus its last 4 past collections, pulled from real recorder
+  history (no projected/estimated dates)
 - **Optional badges** (Delayed/Changed) — only shown if your integration
   actually exposes that data; never invented
 - **Sorts by soonest** collection automatically
@@ -161,6 +164,15 @@ behaves the same in the states it already had (Today/Tomorrow/Next/Quiet), plus:
 
 Change `type: custom:ak-bin-collection-card` → `type: custom:bin-collection-card`.
 All other config keys are the same.
+
+## Tap behaviour
+
+- **Header tap** → opens the popup (Today + Upcoming planner view), if `popup: true`.
+- **Bin icon/image tap** (any mode, including compact) → opens that bin's detail
+  view: its next confirmed collection plus up to 4 past collections pulled from
+  Home Assistant's recorder history. This replaced the native more-info dialog
+  in v4.1.0. Past-collection depth depends entirely on your recorder's retention
+  settings — if it's short, you'll see fewer entries or none, never fabricated ones.
 
 ## Testing
 

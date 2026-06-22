@@ -1,5 +1,5 @@
 /**
- * lovelace-bin-collection-card v4.0.3
+ * lovelace-bin-collection-card v4.1.0
  * Home Assistant custom card for UK bin / waste collection schedules
  * https://github.com/andrejkurlovic/lovelace-bin-collection-card
  *
@@ -1028,14 +1028,14 @@ class BinCollectionCard extends HTMLElement {
     const summary = this._compactSummary(bins);
     const html = `<div class="compact" id="header">
       <div class="compact-dots">
-        ${bins.map(b => `<div class="compact-dot ${b.days === 0 ? 'today' : ''} ${this._isFaded(b) ? 'future' : ''}" data-key="${b.entity}"
+        ${bins.map(b => `<div class="compact-dot ${b.days === 0 ? 'today' : ''} ${this._isFaded(b) ? 'future' : ''}" data-key="${b.entity}" data-entity="${b.entity}"
           style="background:${colorFor(b.color).accent}" title="${b.name}: ${daysLabel(b.days, c)}"></div>`).join('')}
       </div>
       <div class="compact-text">
         <div class="compact-title">${c.title || 'Bin Collection'}</div>
         <div class="compact-summary" data-role="summary">${summary}</div>
       </div>
-      ${bins.slice(0, 3).map(b => `<div class="compact-img-wrap ${this._isFaded(b) ? 'faded' : ''}" data-img-key="${b.entity}">${imgHtml(b, 22, 30, 'compact-img')}</div>`).join('')}
+      ${bins.slice(0, 3).map(b => `<div class="compact-img-wrap ${this._isFaded(b) ? 'faded' : ''}" data-img-key="${b.entity}" data-entity="${b.entity}">${imgHtml(b, 22, 30, 'compact-img')}</div>`).join('')}
     </div>`;
     const struct = bins.map(b => b.entity).join(',');
     return { html, struct };
@@ -1271,12 +1271,115 @@ ${this._popupCss()}
       el.addEventListener('click', e => {
         e.stopPropagation();
         const eid = el.dataset.entity;
-        if (eid) {
+        if (!eid) return;
+        const bin = (this._resolved || []).find(b => b.entity === eid);
+        if (bin) {
+          this._openBinDetail(bin);
+        } else {
           this.dispatchEvent(new CustomEvent('hass-more-info', {
             detail: { entityId: eid }, bubbles: true, composed: true,
           }));
         }
       });
+    });
+  }
+
+  // Real recorder history only — finds the moments the sensor's state transitioned
+  // into "0" (a collection happened), most recent first. Never fabricates entries;
+  // returns whatever the recorder actually has, which may be fewer than `limit` or none.
+  async _fetchPastCollections(entity, limit = 4) {
+    const hass = this._hass;
+    if (!hass || !entity || typeof hass.callApi !== 'function') return [];
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 180);
+    try {
+      const path = `history/period/${start.toISOString()}?filter_entity_id=${encodeURIComponent(entity)}&end_time=${encodeURIComponent(end.toISOString())}&no_attributes`;
+      const result = await hass.callApi('GET', path);
+      const series = Array.isArray(result) && result[0] ? result[0] : [];
+      const collectionDates = [];
+      let wasZero = false;
+      for (const point of series) {
+        const isZero = point.state === '0';
+        if (isZero && !wasZero) collectionDates.push(point.last_changed);
+        wasZero = isZero;
+      }
+      return collectionDates.slice(-limit).reverse();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ── Bin detail — next confirmed date + real past history, tap target on any bin ──
+  _openBinDetail(bin) {
+    this._closePopup();
+    const c = this._config;
+    const cl = colorFor(bin.color);
+    const nextLabel = bin.days != null ? dateText(bin, 'both', c) : 'Unknown';
+
+    const host = document.createElement('div');
+    host.setAttribute('tabindex', '-1');
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    shadow.innerHTML = `
+<style>* { box-sizing: border-box; } ${this._popupCss()}</style>
+<div class="popup-bg" id="bg">
+  <div class="popup-sheet">
+    <div class="popup-drag"></div>
+    <div class="popup-head">
+      <div class="popup-title">${bin.name}</div>
+      <button class="popup-close" id="close-btn">✕</button>
+    </div>
+    <div class="popup-section">
+      <div class="popup-label">Next collection</div>
+      <div class="popup-bin-card" style="background:${cl.bg}">
+        ${imgHtml(bin, 32, 44, 'popup-img')}
+        <div class="popup-bin-info">
+          <div class="popup-bin-name">${bin.name} ${badgesHtml(bin)}</div>
+          <div class="popup-bin-date">${nextLabel}</div>
+          ${bin.message ? `<div class="popup-bin-message">${bin.message}</div>` : ''}
+          ${bin.notes ? `<div class="popup-bin-notes">${bin.notes}</div>` : ''}
+          ${bin.action_text ? `<div class="popup-bin-action">↗ ${bin.action_text}</div>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="popup-divider"></div>
+    <div class="popup-section">
+      <div class="popup-label">Past collections</div>
+      <div id="past-list" class="popup-empty">Checking history…</div>
+    </div>
+  </div>
+</div>`;
+
+    document.body.appendChild(host);
+    this._popup = host;
+
+    shadow.getElementById('close-btn').addEventListener('click', () => this._closePopup());
+    shadow.getElementById('bg').addEventListener('click', e => {
+      if (e.target === shadow.getElementById('bg')) this._closePopup();
+    });
+    const onEsc = e => {
+      if (e.key === 'Escape') { this._closePopup(); document.removeEventListener('keydown', onEsc); }
+    };
+    document.addEventListener('keydown', onEsc);
+    this._escHandler = onEsc;
+
+    this._fetchPastCollections(bin.entity, 4).then(dates => {
+      if (this._popup !== host) return; // closed (or replaced) before the fetch resolved
+      const el = shadow.getElementById('past-list');
+      if (!el) return;
+      if (!dates.length) {
+        el.textContent = 'No collection history available yet';
+        return;
+      }
+      const list = document.createElement('div');
+      list.className = 'popup-tl-col';
+      list.id = 'past-list';
+      list.innerHTML = dates.map(d => {
+        const parsed = new Date(d);
+        return `<div class="popup-tl-chip" style="background:${cl.bg}">${friendlyDate(parsed)}</div>`;
+      }).join('');
+      el.replaceWith(list);
     });
   }
 
