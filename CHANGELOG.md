@@ -1,5 +1,69 @@
 # Changelog
 
+## v5.0.0 — full rewrite
+
+A ground-up rewrite of the implementation. **No config changes required** —
+every v4 YAML config works unmodified. The old vanilla-JS single file is
+reference history only at this point; this release replaces it entirely.
+
+### What changed (architecture)
+- Rewritten in TypeScript on top of [Lit](https://lit.dev), with a real build
+  pipeline (`esbuild`) producing the single bundled file HACS expects at the
+  repo root. Source is split into `types`/`models`/`services`/`utils`/
+  `renderers`/`card`/`styles` — see the Architecture section in README.md.
+- The old hand-rolled "structural signature + manual DOM patch" anti-flicker
+  system is gone, replaced by Lit's own template diffing plus keyed
+  `repeat()` for bin lists. This isn't just a style change: it closes an
+  entire bug class the old system was prone to (e.g. the v4.2.0 "stale 'no
+  entity' warning" bug was a direct consequence of that manual patching
+  model and can't recur under Lit, since every render re-evaluates the full
+  template fresh).
+- The popup is now a real Web Component (`<bin-collection-popup>`), appended
+  to `document.body` like before (to escape any clipping ancestor), but
+  reactive — async history loading just updates a property instead of
+  manually replacing DOM nodes.
+- The card now renders inside `<ha-card>` instead of a hand-styled `.card`
+  div, picking up theme-aware background/border/shadow for free instead of
+  re-implementing it via CSS variables.
+- The visual editor's global settings now use HA's own `ha-form` (schema +
+  selectors) instead of ~150 lines of hand-built `<div>`/`<select>` markup.
+  Per-bin fields still use `ha-entity-picker`/`ha-icon-picker`/`ha-selector`
+  directly (no plain-`<input>` fallback anymore — see "Dropped" below).
+- `npm test` now builds the bundle and runs 60 headless-DOM assertions
+  against the built artifact (jsdom), covering all five modes, the
+  smart-summary state machine, tied-bin naming, fade/highlight/secondary_info
+  config, badges, the planner and bin-detail popups (including real recorder
+  history fetching), the missing-entity lifecycle, and the editor.
+
+### Preserved (feature parity)
+All five modes (`smart-summary`, `image-grid`, `row`, `timeline`, `compact`),
+real bin images with icon fallback, `days_ahead` filtering, `show_all_bins`,
+`show_future_bins`, `fade_future_bins`, header/title, the "Next: …" summary
+line, the planner popup, the bin detail popup with real recorder history,
+per-bin notes and action text, sorting, `secondary_info` (days/date/both),
+`highlight_today` (off/subtle/strong), `display_density`, optional
+delayed/changed badges, and HACS installation (same filename, same
+`content_in_root` contract — existing installs update in place).
+
+### Dropped (deliberately, and why)
+- **Plain-`<input>` fallback in the editor** if `ha-entity-picker`/
+  `ha-icon-picker`/`ha-selector`/`ha-form` aren't defined yet. The old card
+  defended against this because it wasn't sure these lazy-loaded frontend
+  components would be ready. In practice, by the time a user opens *any*
+  Lovelace card editor, the surrounding dashboard-edit UI has already loaded
+  these same components for its own "add card" flow — every other
+  professional custom card relies on this. Dropping the fallback removes
+  ~80 lines of defensive DOM-mounting code for a scenario that doesn't
+  occur on any supported HA version.
+- **`hass-more-info` fallback dispatch** on bin tap. It existed to handle an
+  entity-lookup miss that could only happen with the old DOM-attribute-based
+  tap handling; the new architecture binds click handlers directly to
+  resolved bin objects via closures, so that failure mode no longer exists
+  structurally.
+- The shipped file is now a minified bundle (includes a vendored copy of
+  Lit, to avoid any version conflict with HA's own internal Lit copy) rather
+  than hand-written readable JS. Source remains fully readable in `src/`.
+
 ## v4.2.1
 
 ### Internal cleanup (no behaviour change for normal use)

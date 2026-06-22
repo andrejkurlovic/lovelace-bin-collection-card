@@ -1,6 +1,6 @@
 {
   "name": "Bin Collection Card",
-  "description": "Situational-awareness Lovelace card for UK bin/waste collection schedules — what's due today, what's next. Smart-summary, image grid, timeline, compact modes. Full visual editor. Dark glassy design.",
+  "description": "Situational-awareness Lovelace card for UK bin/waste collection schedules — what's due today, what's next. Smart-summary, image grid, row, timeline, compact modes. Native HA-form visual editor. Dark glassy design.",
   "render_readme": true,
   "homeassistant": "2023.9.0",
   "filename": "lovelace-bin-collection-card.js",
