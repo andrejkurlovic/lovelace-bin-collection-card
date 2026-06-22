@@ -4,6 +4,8 @@
 [![GitHub release](https://img.shields.io/github/v/release/andrejkurlovic/lovelace-bin-collection-card)](https://github.com/andrejkurlovic/lovelace-bin-collection-card/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrejkurlovic&repo=lovelace-bin-collection-card&category=plugin)
+
 A situational-awareness [Home Assistant](https://www.home-assistant.io/) Lovelace
 card for UK bin/waste collection schedules. It answers one question:
 
@@ -41,10 +43,19 @@ glanceable display, by design.
 
 ### HACS (recommended)
 
-1. HACS → Frontend → ⋮ → Custom repositories → add
-   `https://github.com/andrejkurlovic/lovelace-bin-collection-card`
+Click below — it opens your own Home Assistant instance with this repository
+pre-filled in HACS's "Add custom repository" dialog, you just need to confirm:
+
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrejkurlovic&repo=lovelace-bin-collection-card&category=plugin)
+
+Then:
+
+1. Confirm "Add" in the dialog that opens
 2. Find **Bin Collection Card** in HACS and install it
 3. Hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R)
+
+Or do it by hand: HACS → Frontend → ⋮ → Custom repositories → add
+`https://github.com/andrejkurlovic/lovelace-bin-collection-card` as type **Lovelace**.
 
 ### Manual
 

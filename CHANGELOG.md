@@ -1,5 +1,13 @@
 # Changelog
 
+## v5.0.1
+
+### Docs
+- Added a "My Home Assistant" one-click badge to the README that opens the
+  user's own HA instance with this repo pre-filled in HACS's "Add custom
+  repository" dialog, so installing no longer requires manually typing the
+  GitHub URL.
+
 ## v5.0.0 — full rewrite
 
 A ground-up rewrite of the implementation. **No config changes required** —
